@@ -1,0 +1,47 @@
+﻿@page "/chat"
+@using Microsoft.AspNetCore.SignalR.Client
+
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+@foreach (var item in Times)
+{
+    <p>@item</p>
+}
+
+
+<h3>Current Time</h3>
+<p id="time">Loading...</p>
+
+@code {
+    private HubConnection? hubConnection;
+    public List<string> Times { get; set; } = new();
+    protected override async Task OnInitializedAsync()
+    {
+        // Create the SignalR connection to the ClockHub
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/clockHub"))
+            .Build();
+
+        // Define the handler for the ShowTime method called from the hub
+        hubConnection.On<DateTime>("ShowTime", (time) =>
+        {
+            // Update the UI with the received time
+            Times.Add( time.ToString("HH:mm:ss"));
+            InvokeAsync(StateHasChanged);  // Request the UI to re-render
+        });
+
+        // Start the connection
+        await hubConnection.StartAsync();
+    }
+
+
+    public async ValueTask DisposeAsync()
+    {
+        // Clean up the connection
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
